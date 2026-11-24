@@ -959,13 +959,36 @@ export interface BatchSynthesizeOptions {
   }) => Promise<{ audioBase64: string; mimeType: string }>;
 }
 
+const DEFAULT_NATIVE_API_ORIGIN =
+  'https://ais-pre-o5bohgeolbk6axhqul5xt3-885774549487.asia-northeast1.run.app';
+
+export function resolveApiUrl(path: string): string {
+  if (typeof window === 'undefined') return path;
+  const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
+    .Capacitor;
+  const isCapacitorNative =
+    Boolean(cap?.isNativePlatform?.()) ||
+    window.location.protocol === 'capacitor:' ||
+    (window.location.hostname === 'localhost' && !window.location.port);
+
+  if (isCapacitorNative) {
+    const envBase =
+      typeof import.meta !== 'undefined' &&
+      (import.meta as unknown as { env?: Record<string, string> }).env
+        ?.VITE_API_BASE_URL;
+    const baseOrigin = (envBase || DEFAULT_NATIVE_API_ORIGIN).replace(/\/+$/, '');
+    return `${baseOrigin}${path.startsWith('/') ? path : `/${path}`}`;
+  }
+  return path;
+}
+
 async function defaultSynthesizeChunkCaller(params: {
   text: string;
   voiceName: VoiceName;
   style: string;
   signal?: AbortSignal;
 }): Promise<{ audioBase64: string; mimeType: string }> {
-  const response = await fetch('/api/tts', {
+  const response = await fetch(resolveApiUrl('/api/tts'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -1394,7 +1417,7 @@ export async function getVoiceSampleAudioDataUrl(
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 25000);
         try {
-          const response = await fetch('/api/tts', {
+          const response = await fetch(resolveApiUrl('/api/tts'), {
             method: 'POST',
             cache: 'no-store',
             headers: {

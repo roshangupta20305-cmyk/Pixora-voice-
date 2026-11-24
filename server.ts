@@ -11,6 +11,21 @@ const app = express();
 // Support up to 50MB JSON payloads so 10MB+ text inputs and multi-chunk audio merges work seamlessly
 app.use(express.json({ limit: '50mb' }));
 
+// Enable CORS for Capacitor Android APK (https://localhost / capacitor://localhost)
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Cache-Control, Pragma, Authorization'
+  );
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  next();
+});
+
 const SERVER_MAX_CHUNK_CHARS = 3800;
 
 export interface ServerVoiceInfo {
